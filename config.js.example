@@ -1,0 +1,17 @@
+var config = {
+    auth: {
+        consumer_key: 'API key',
+        consumer_secret: 'API secret',
+        access_token: 'Access token',
+        access_token_secret: 'Access token secret'
+    },
+    users: [
+        'matevzmihalic'
+    ],
+    hashtags: [
+        '#testhashtag'
+    ],
+    server_port: 8888
+}
+
+module.exports = config;
