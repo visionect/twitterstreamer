@@ -9,19 +9,8 @@ var lastImage = 'visionect.jpg?' + new Date().getTime(),
     devices = {},
     currentDevice = 0;
 
-// Get Twitter user IDs from usernames
 var T = new Twit(config.auth);
-T.get('users/lookup', {screen_name: config.users.join()}, function(err, reply) {
-    if (err) {
-        console.log(err);
-        return;
-    }
-    var user_ids = reply.map(function(user) {
-        return user.id;
-    });
-    
-    console.log('Got ids for users:', user_ids);
-
+var initStream = function(user_ids) {
     // Start listening to stream
     var stream = T.stream('statuses/filter', {follow: user_ids.join(), track: config.hashtags.join()});
 
@@ -53,7 +42,26 @@ T.get('users/lookup', {screen_name: config.users.join()}, function(err, reply) {
             console.log('New image: ' + lastImage);
         }
     });
-});
+}
+
+if (config.users.length) {
+    // Get Twitter user IDs from usernames
+    T.get('users/lookup', {screen_name: config.users.join()}, function(err, reply) {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        var user_ids = reply.map(function(user) {
+            return user.id;
+        });
+        
+        console.log('Got ids for users:', user_ids);
+        initStream(user_ids);
+    });
+} else {
+    // initialize Twitter stream without users
+    initStream([]);
+}
 
 // Create static files server
 var fileServer = new static.Server('./public');
@@ -74,7 +82,7 @@ var sendImage = function(socket) {
 server.on('connection', function(socket) {
     devices[socket.id] = lastImage;
     sendImage(socket);
-    
+
     eventEmitter.on('newImage', function() {
         sendImage(socket);
     });
