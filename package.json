@@ -24,10 +24,7 @@
   "homepage": "https://github.com/visionect/twitterstreamer",
   "dependencies": {
     "twit": "~1.1.12",
-    "engine": "0.0.1",
     "engine.io": "~1.0.1",
-    "node-static": "~0.7.3",
-    "gm": "~1.14.2",
-    "request": "~2.34.0"
+    "node-static": "~0.7.3"
   }
 }
