@@ -5,7 +5,9 @@ var Twit = require('twit'),
     events = require('events'),
     eventEmitter = new events.EventEmitter();
 
-var lastImage = {};
+var lastImage = 'visionect.jpg?' + new Date().getTime(),
+    devices = {},
+    currentDevice = 0;
 
 // Get Twitter user IDs from usernames
 var T = new Twit(config.auth);
@@ -21,29 +23,34 @@ T.get('users/lookup', {screen_name: config.users.join()}, function(err, reply) {
     console.log('Got ids for users:', user_ids);
 
     // Start listening to stream
-    var stream = T.stream('statuses/filter', {follow: user_ids.join(), track: config.hashtags.join()}),
-        hashtagregex = new RegExp(config.hashtags.join('|'));
+    var stream = T.stream('statuses/filter', {follow: user_ids.join(), track: config.hashtags.join()});
 
     stream.on('tweet', function(tweet) {
-        if (user_ids.indexOf(tweet.user.id) != -1 && hashtagregex.test(tweet.text)) {
-            var images = [];
-            if ('media' in tweet.entities) {
-                images = tweet.entities.media.filter(function(media) {
-                    return media.type == 'photo';
-                }).map(function(media) {
-                    return media.media_url;
-                });
-            } else if ('urls' in tweet.entities) {
-                images = tweet.entities.urls.filter(function(url) {
-                    return url.expanded_url.indexOf('instagr') != -1;
-                }).map(function(url) {
-                    return url.expanded_url + 'media?size=l';
-                });
-            }
-            if (images.length > 0) {
-                console.log(tweet, images[0]);
+        var images = [];
+        if ('media' in tweet.entities) {
+            images = tweet.entities.media.filter(function(media) {
+                return media.type == 'photo';
+            }).map(function(media) {
+                return media.media_url;
+            });
+        } else if ('urls' in tweet.entities) {
+            images = tweet.entities.urls.filter(function(url) {
+                return url.expanded_url.indexOf('instagr') != -1;
+            }).map(function(url) {
+                return url.expanded_url + 'media?size=l';
+            });
+        }
+        if (images.length > 0) {
+            lastImage = images[0];
+            if (Object.keys(devices).length > 0) {
+                currentDevice++;
+                if (currentDevice >= Object.keys(devices).length) {
+                    currentDevice = 0;
+                }
+                devices[Object.keys(devices)[currentDevice]] = lastImage;
                 eventEmitter.emit('newImage');
             }
+            console.log('New image: ' + lastImage);
         }
     });
 });
@@ -61,12 +68,18 @@ console.log('Started server on port %d. Open http://127.0.0.1:%d in your browser
 var server = engine.attach(http);
 
 var sendImage = function(socket) {
-    socket.send(JSON.stringify(lastImage));
+    socket.send(JSON.stringify(devices));
 }
 
 server.on('connection', function(socket) {
+    devices[socket.id] = lastImage;
     sendImage(socket);
+    
     eventEmitter.on('newImage', function() {
         sendImage(socket);
+    });
+
+    socket.on('close', function() {
+        delete devices[socket.id];
     });
 });
